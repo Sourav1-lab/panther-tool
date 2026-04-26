@@ -1,1 +1,12 @@
-{}
+{
+    "admin": {
+        "password": "admin",
+        "role": "admin",
+        "stats": {
+            "567slot": 0,
+            "mbmbet": 0,
+            "yonoslot": 0,
+            "hirummy": 0
+        }
+    }
+}
