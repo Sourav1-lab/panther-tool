@@ -20,8 +20,8 @@ GAME_SERVICES = ["567slot_game", "mbmbet_game", "yonoslot_game", "hirummy_game"]
 
 # --- Database Management ---
 def load_db():
-    #           
-    if not os.path.exists(DB_FILE) or os.stat(DB_FILE).st_size <= 4:
+    #             
+    if not os.path.exists(DB_FILE) or os.stat(DB_FILE).st_size <= 2:
         initial_data = {
             "admin": {
                 "password": "admin", 
@@ -29,15 +29,14 @@ def load_db():
                 "stats": {g.split('_')[0]: 0 for g in GAME_SERVICES}
             }
         }
-        with open(DB_FILE, "w") as f:
-            json.dump(initial_data, f, indent=4)
+        save_db(initial_data)
         return initial_data
     
-    with open(DB_FILE, "r") as f:
-        try:
+    try:
+        with open(DB_FILE, "r") as f:
             return json.load(f)
-        except:
-            return {"admin": {"password": "admin", "role": "admin", "stats": {g.split('_')[0]: 0 for g in GAME_SERVICES}}}
+    except (json.JSONDecodeError, FileNotFoundError):
+        return {"admin": {"password": "admin", "role": "admin", "stats": {g.split('_')[0]: 0 for g in GAME_SERVICES}}}
 
 def save_db(data):
     with open(DB_FILE, "w") as f:
@@ -47,21 +46,25 @@ def save_db(data):
 def send_otp(phone, app_name):
     url = f"{BASE_URL}/v1/register/send_otp"
     try:
-        res = requests.post(url, headers=HEADERS, json={"phone": phone, "app_name": app_name}, verify=False, timeout=20)
+        res = requests.post(url, headers=HEADERS, json={"phone": str(phone), "app_name": app_name}, verify=False, timeout=20)
         return res.json()
-    except: return {"status": "error", "message": "Connection Timeout"}
+    except Exception as e: 
+        return {"status": "error", "message": f"Connection Error: {str(e)}"}
 
 def verify_otp(task_id, otp):
     url = f"{BASE_URL}/v1/register/verify_otp"
     try:
-        res = requests.post(url, headers=HEADERS, json={"task_id": task_id, "otp": otp}, verify=False, timeout=20)
+        # task_id  otp     
+        payload = {"task_id": str(task_id), "otp": str(otp)}
+        res = requests.post(url, headers=HEADERS, json=payload, verify=False, timeout=20)
         return res.json()
-    except: return {"status": "error", "message": "Verification Failed"}
+    except Exception as e: 
+        return {"status": "error", "message": f"Verification Failed: {str(e)}"}
 
 def cancel_task_api(task_id):
     url = f"{BASE_URL}/v1/register/cancel_task"
     try:
-        res = requests.post(url, headers=HEADERS, json={"task_id": task_id}, verify=False, timeout=10)
+        res = requests.post(url, headers=HEADERS, json={"task_id": str(task_id)}, verify=False, timeout=10)
         return res.json()
     except: return {"status": "error", "message": "Server Error"}
 
@@ -76,7 +79,7 @@ if "submitted_tasks" not in st.session_state: st.session_state.submitted_tasks =
 # --- Login Page ---
 if not st.session_state.logged_in:
     st.title(" Tool Login")
-    u_id = st.text_input("User ID").strip().lower() #    
+    u_id = st.text_input("User ID").strip().lower()
     u_pass = st.text_input("Password", type="password").strip()
     
     if st.button("Login", use_container_width=True):
@@ -145,7 +148,7 @@ else:
                 status_placeholder.empty()
                 progress_bar.empty()
                 st.rerun()
-            else: st.warning("Enter valid phone.")
+            else: st.warning("Enter valid phone number.")
 
         if st.session_state.multi_tasks:
             st.divider()
@@ -153,7 +156,7 @@ else:
             # --- Universal Submission ---
             st.markdown("###  Smart Multi-OTP Submission")
             uni_col1, uni_col2 = st.columns([3, 1])
-            raw_input = uni_col1.text_input("Enter multiple OTPs", key="universal_otp")
+            raw_input = uni_col1.text_input("Enter multiple OTPs (space or comma separated)", key="universal_otp")
             
             if uni_col2.button(" Quick Submit", use_container_width=True):
                 if raw_input:
@@ -161,10 +164,12 @@ else:
                     for current_otp in otp_list:
                         pending_apps = [name for name in st.session_state.multi_tasks.keys() if name not in st.session_state.submitted_tasks]
                         for g_name in pending_apps:
-                            if verify_otp(st.session_state.multi_tasks[g_name], current_otp).get("status") == "success":
+                            v_res = verify_otp(st.session_state.multi_tasks[g_name], current_otp)
+                            if v_res.get("status") == "success":
                                 st.session_state.submitted_tasks[g_name] = current_otp
                                 sk = g_name.split('_')[0]
-                                db[user]["stats"][sk] += 1
+                                if sk in db[user]["stats"]:
+                                    db[user]["stats"][sk] += 1
                                 save_db(db)
                                 st.toast(f" {g_name} Success")
                                 break
@@ -182,11 +187,16 @@ else:
                     if is_done: col3.write(" Done")
                     else:
                         if col3.button("Verify", key=f"v_btn_{game_name}", use_container_width=True):
-                            if verify_otp(task_id, otp_val).get("status") == "success":
-                                st.session_state.submitted_tasks[game_name] = otp_val
-                                sk = game_name.split('_')[0]
-                                db[user]["stats"][sk] += 1
-                                save_db(db); st.rerun()
+                            with st.spinner("Checking..."):
+                                v_res = verify_otp(task_id, otp_val)
+                                if v_res.get("status") == "success":
+                                    st.session_state.submitted_tasks[game_name] = otp_val
+                                    sk = game_name.split('_')[0]
+                                    if sk in db[user]["stats"]:
+                                        db[user]["stats"][sk] += 1
+                                    save_db(db); st.rerun()
+                                else:
+                                    st.error(f"Error: {v_res.get('message', 'Invalid OTP')}")
 
     if st.sidebar.button("Logout", use_container_width=True):
         st.session_state.logged_in = False
