@@ -20,7 +20,7 @@ GAME_SERVICES = ["567slot_game", "mbmbet_game", "yonoslot_game", "hirummy_game"]
 
 # --- Database Management ---
 def load_db():
-    #             
+    # ফাইল না থাকলে বা ফাইলের সাইজ খুব ছোট হলে ডিফল্ট ডাটা তৈরি করবে
     if not os.path.exists(DB_FILE) or os.stat(DB_FILE).st_size <= 2:
         initial_data = {
             "admin": {
@@ -54,7 +54,7 @@ def send_otp(phone, app_name):
 def verify_otp(task_id, otp):
     url = f"{BASE_URL}/v1/register/verify_otp"
     try:
-        # task_id  otp     
+        # task_id এবং otp অবশ্যই স্ট্রিং হিসেবে পাঠাতে হবে
         payload = {"task_id": str(task_id), "otp": str(otp)}
         res = requests.post(url, headers=HEADERS, json=payload, verify=False, timeout=20)
         return res.json()
@@ -78,7 +78,7 @@ if "submitted_tasks" not in st.session_state: st.session_state.submitted_tasks =
 
 # --- Login Page ---
 if not st.session_state.logged_in:
-    st.title(" Tool Login")
+    st.title("🔐 Tool Login")
     u_id = st.text_input("User ID").strip().lower()
     u_pass = st.text_input("Password", type="password").strip()
     
@@ -91,12 +91,12 @@ if not st.session_state.logged_in:
 # --- Main Application ---
 else:
     user, role = st.session_state.user, st.session_state.role
-    st.sidebar.title(f" {user.upper()}")
+    st.sidebar.title(f"👤 {user.upper()}")
     nav = st.sidebar.radio("Menu", ["Registration Tool", "Admin Panel"] if role == "admin" else ["Registration Tool"])
 
     if nav == "Admin Panel":
-        st.header(" Admin Control Center")
-        tab1, tab2 = st.tabs([" Add New User", " Manage Users"])
+        st.header("🛠️ Admin Control Center")
+        tab1, tab2 = st.tabs(["➕ Add New User", "⚙️ Manage Users"])
         with tab1:
             new_id = st.text_input("New User ID").strip().lower()
             new_pass = st.text_input("New Password").strip()
@@ -109,25 +109,25 @@ else:
             if users_to_edit:
                 target = st.selectbox("Select User", users_to_edit)
                 new_p = st.text_input("Change Password", value=db[target]["password"])
-                if st.button(" Save Changes"):
+                if st.button("💾 Save Changes"):
                     db[target]["password"] = new_p
                     save_db(db); st.success("Updated!"); st.rerun()
-                if st.button(" Delete User", type="primary"): del db[target]; save_db(db); st.rerun()
+                if st.button("🗑️ Delete User", type="primary"): del db[target]; save_db(db); st.rerun()
 
     else:
-        st.markdown(f"###  Welcome, {user.upper()}!")
+        st.markdown(f"### 👋 Welcome, {user.upper()}!")
         u_stats = db[user]["stats"]
-        st.info(" Stats: " + " | ".join([f"**{k}:** {v}" for k, v in u_stats.items()]))
+        st.info("📊 Stats: " + " | ".join([f"**{k}:** {v}" for k, v in u_stats.items()]))
         st.divider()
 
-        st.subheader(" Send Multi-OTP")
+        st.subheader("🚀 Send Multi-OTP")
         col_in1, col_in2 = st.columns([2, 1])
         with col_in1:
             selected_games = st.multiselect("Select Apps", GAME_SERVICES, default=[GAME_SERVICES[0]])
         with col_in2:
             phone_val = st.text_input("10-digit Phone Number", key="phone_input").strip()
 
-        if st.button(" SEND ALL OTPs", use_container_width=True):
+        if st.button("🚀 SEND ALL OTPs", use_container_width=True):
             if len(phone_val) == 10 and selected_games:
                 st.session_state.multi_tasks = {}
                 st.session_state.submitted_tasks = {}
@@ -136,12 +136,12 @@ else:
                 progress_bar = st.progress(0)
                 
                 for idx, game in enumerate(selected_games):
-                    status_placeholder.markdown(f" **Sending OTP for:** `{game}`...")
+                    status_placeholder.markdown(f"⏳ **Sending OTP for:** `{game}`...")
                     res = send_otp(phone_val, game)
                     if res.get("status") == "success":
                         st.session_state.multi_tasks[game] = res.get("task_id")
-                        st.toast(f" {game} Sent")
-                    else: st.error(f" {game}: {res.get('message')}")
+                        st.toast(f"✅ {game} Sent")
+                    else: st.error(f"❌ {game}: {res.get('message')}")
                     progress_bar.progress((idx + 1) / len(selected_games))
                     if idx < len(selected_games) - 1: time.sleep(1)
                 
@@ -154,11 +154,11 @@ else:
             st.divider()
             
             # --- Universal Submission ---
-            st.markdown("###  Smart Multi-OTP Submission")
+            st.markdown("### 🌟 Smart Multi-OTP Submission")
             uni_col1, uni_col2 = st.columns([3, 1])
             raw_input = uni_col1.text_input("Enter multiple OTPs (space or comma separated)", key="universal_otp")
             
-            if uni_col2.button(" Quick Submit", use_container_width=True):
+            if uni_col2.button("⚡ Quick Submit", use_container_width=True):
                 if raw_input:
                     otp_list = [o.strip() for o in raw_input.replace(',', ' ').split() if o.strip()]
                     for current_otp in otp_list:
@@ -171,7 +171,7 @@ else:
                                 if sk in db[user]["stats"]:
                                     db[user]["stats"][sk] += 1
                                 save_db(db)
-                                st.toast(f" {g_name} Success")
+                                st.toast(f"✅ {g_name} Success")
                                 break
                     st.rerun()
 
@@ -185,7 +185,7 @@ else:
                     otp_val = col2.text_input("OTP", value=display_otp, key=f"otp_{game_name}", label_visibility="collapsed", disabled=is_done)
                     
                     if is_done: 
-                        col3.write(f" Done ({display_otp})")
+                        col3.write(f"✅ Done ({display_otp})")
                     else:
                         if col3.button("Verify", key=f"v_btn_{game_name}", use_container_width=True):
                             with st.spinner("Checking..."):
