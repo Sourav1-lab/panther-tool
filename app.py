@@ -184,7 +184,8 @@ else:
                     display_otp = st.session_state.submitted_tasks.get(game_name, "")
                     otp_val = col2.text_input("OTP", value=display_otp, key=f"otp_{game_name}", label_visibility="collapsed", disabled=is_done)
                     
-                   if is_done: col3.write(f" Done ({display_otp})")
+                    if is_done: 
+                        col3.write(f" Done ({display_otp})")
                     else:
                         if col3.button("Verify", key=f"v_btn_{game_name}", use_container_width=True):
                             with st.spinner("Checking..."):
