@@ -16,7 +16,7 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-GAME_SERVICES = ["567slot_game", "mbmbet_game", "yonoslot_game", "789jackpot_game"]
+GAME_SERVICES = ["567slot_game", "mbmbet_game", "yonoslot_game", "Yono_vip", "789jackpot_game"]
 
 # --- Database Management ---
 def load_db():
